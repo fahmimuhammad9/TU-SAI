@@ -7,6 +7,7 @@ class User extends CI_Controller
     {
         parent::__construct();
         $this->load->library('form_validation');
+        date_default_timezone_set('Asia/Jakarta');
     }
 
     public function index()
@@ -14,6 +15,9 @@ class User extends CI_Controller
         if ($this->session->userdata['email'] == null) {
             redirect('login');
         }
+
+        $data['user'] = $this->db->get_where('user', ['useremail' => $this->session->userdata['email']])->row_array();
+
         $data['title'] = 'Dashboard TU Sekolah Alam';
         $this->load->view('template/header', $data);
         $this->load->view('template/navbar', $data);
@@ -96,5 +100,63 @@ class User extends CI_Controller
 
         $this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">Anda telah Logout!</div>');
         redirect('login');
+    }
+
+    public function add_pesdik()
+    {
+        if ($this->session->userdata['email'] == null) {
+            redirect('login');
+        }
+
+        $this->form_validation->set_rules('nama', 'Nama', 'required|trim', ['required' => 'Kolom ini Harus Diisi']);
+        $this->form_validation->set_rules('kelas', 'Kelas', 'required|trim', ['required' => 'Kolom ini Harus Diisi']);
+        $this->form_validation->set_rules('nis', 'Nis', 'required|trim', ['required' => 'Kolom ini Harus Diisi']);
+        $this->form_validation->set_rules('kelas', 'Kelas', 'required|trim', ['required' => 'Kolom ini Harus Diisi']);
+
+        if ($this->form_validation->run() == false) {
+            $data['kelas'] = $this->db->get('kelas')->result_array();
+            $data['user'] = $this->db->get_where('user', ['useremail' => $this->session->userdata['email']])->row_array();
+
+            $data['title'] = 'Tambah Peserta Didik Baru';
+            $this->load->view('template/header', $data);
+            $this->load->view('template/navbar', $data);
+            $this->load->view('content/muridbaru', $data);
+            $this->load->view('template/footer');
+        } else {
+            $insert = [
+                'last_updated' => date('Y-m-d H:i:s', time()),
+                'nis' => $this->input->post('nis'),
+                'nama' => htmlspecialchars($this->input->post('nama')),
+                'kelas' => $this->input->post('kelas')
+            ];
+            $this->db->insert('pesdik', $insert);
+
+            $this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">Berhasil Menambahkan Peserta Didik baru</div>');
+            redirect('/datamurid');
+        }
+    }
+
+    public function datamurid()
+    {
+        if ($this->session->userdata['email'] == null) {
+            redirect('login');
+        }
+
+        $data['user'] = $this->db->get_where('user', ['useremail' => $this->session->userdata['email']])->row_array();
+
+        $this->db->join('kelas', 'kelas.idkelas = pesdik.kelas');
+        $data['murid'] = $this->db->get('pesdik')->result_array();
+
+        $this->db->order_by('last_updated', 'DESC');
+        $this->db->limit(1);
+        $this->db->select('last_updated');
+        $data['last_update'] = $this->db->get('pesdik')->row_array();
+
+        $data['title'] = 'Tambah Peserta Didik Baru';
+
+        $this->load->view('template/header', $data);
+        $this->load->view('template/navbar', $data);
+        $this->load->view('content/murid', $data);
+        $this->load->view('template/footer');
     }
 }
